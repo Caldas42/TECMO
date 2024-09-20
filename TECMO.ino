@@ -1,139 +1,103 @@
-#include <LiquidCrystal.h> // Biblioteca da tela LCD
+#include <Wire.h>                  // Include the Wire library for I2C communication
+#include <LiquidCrystal_I2C.h>     // Include the LiquidCrystal_I2C library for the LCD display
 
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+LiquidCrystal_I2C lcd(0x27, 20, 4); // Initialize the LCD object with the I2C address (0x27), 20 columns, and 4 rows
 
-const int btnF = 10; // Botão verde
-const int btnM = 7; // Botão amarelo
-const int btnD = 6; // Botão vermelho
+const int greenBtn = 6;
+const int yellowBtn = 4;
+const int redBtn = 5;
 
-int dificuldade;
+int difficulty;
 
-char* perguntasF[5] = {"Qual peca armazena dados temporariamente", "Qual e o cerebro do computador..........", "Qual peca armazena dados permanentemente", "Qual peca processa graficos e imagens...", "Qual peca fornece energia ao computador."}; // Perguntas fáceis
-char* perguntasM[5] = {"Qual peca tem frequencias e latencias...", "Qual executa varias tarefas simultaneas..", "Qual peca usa memoria flash.............", "Qual peca acelera a criacao de imagens..", "Qual peca converte energia eletrica....."}; // Perguntas médias
-char* perguntasD[5] = {"Qual peca pode ser DDR3, DDR4 ou DDR5...", "Qual peca usa arquiteturas x86 ou ARM...", "Qual peca usa SATA, NVMe ou PCIe........", "Qual peca suporta Ray Tracing e DLSS....", "Qual tem certificacoes de eficiencia...."}; // Perguntas difíceis
+char* easyQuestions[5] = {"Qual peca armazena dados temporariamente", "Qual e o cerebro do computador", "Qual peca armazena dados permanentemente", "Qual peca processa graficos e imagens", "Qual peca fornece energia ao computador."};
+char* normalQuestions[5] = {"Qual peca tem frequencias e latencias", "Qual executa varias tarefas simultaneas", "Qual peca usa memoria flash", "Qual peca acelera a criacao de imagens", "Qual peca converte energia eletrica"};
+char* hardQuestions[5] = {"Qual peca pode ser DDR3, DDR4 ou DDR5", "Qual peca usa arquiteturas x86 ou ARM", "Qual peca usa SATA, NVMe ou PCIe", "Qual peca suporta Ray Tracing e DLSS", "Qual tem certificacoes de eficiencia"};
 
-int luz[5] = { A0, A1, A2, A3, A4 }; // A0 - RAM, A1 - CPU, A2 - SSD, A3 - GPU, A4 - Fonte
-const int intensidadeLuzEncaixe = 30;
+int reedSwitches[3] = {8, 10, 9};
 
-const int ledVermelho = 8;
-const int ledVerde = 9;
-int cont; // Contador para checagem dos encaixes
-int contBreak; // Contador para dar break em um while (true)
+const int redLed = 2;
+const int greenLed = 3;
+
+int buzzerPin = 7;
+
+int cont;
+int contBreak;
 
 void setup() {
-  Serial.begin(9600);
+  pinMode(greenBtn, INPUT_PULLUP);
+  pinMode(yellowBtn, INPUT_PULLUP);
+  pinMode(redBtn, INPUT_PULLUP);
 
-  pinMode(btnF, INPUT_PULLUP);
-  pinMode(btnM, INPUT_PULLUP);
-  pinMode(btnD, INPUT_PULLUP);
+  pinMode(redLed, OUTPUT);
+  pinMode(greenLed, OUTPUT);
 
-  pinMode(ledVermelho, OUTPUT);
-  pinMode(ledVerde, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
 
-  lcd.begin(16, 2); // Define a quantidade de caracteres usados na tela
+  for (int i = 0; i < 3; i++) {
+    pinMode(reedSwitches[i], INPUT_PULLUP);
+  }
+
+  lcd.init();            // Initialize the LCD
+  lcd.backlight();       // Turn on the backlight
 }
 
 void loop() {
-  lcd.clear(); // Limpa a tela no começo do loop
+  lcd.clear();           // Clear any previous content displayed on the LCD
   cont = 0;
 
-  lcd.setCursor(0, 0); // Define caractere inicial e linha do que vai ser escrito na tela
-  lcd.print("Selecione a");
-  lcd.setCursor(0, 1);
-  lcd.print("dificuldade"); // Define caractere inicial e linha do que vai ser escrito na tela
+  lcd.setCursor(5, 0);
+  lcd.print("Selecione");
+
+  lcd.setCursor(9, 1);
+  lcd.print("a");
+
+  lcd.setCursor(4, 2);
+  lcd.print("dificuldade");
 
   while (true) {
-    if (digitalRead(btnF) == LOW) {
-      dificuldade = 0; // Retornando dificuldade fácil
-      
-      // Feedback na serial do estado do botão
-      Serial.print("Botão verde = ");
-      Serial.print(digitalRead(btnF));
+    if (digitalRead(greenBtn) == LOW) {
+      difficulty = 0;
       break;
-    } else if (digitalRead(btnM) == LOW) {
-      dificuldade = 1; // Retornando dificuldade média
-
-      // Feedback na serial do estado do botão
-      Serial.print("Botão amarelo = ");
-      Serial.print(digitalRead(btnM));
+    } else if (digitalRead(yellowBtn) == LOW) {
+      difficulty = 1;
       break;
-    } else if (digitalRead(btnD) == LOW) {
-      dificuldade = 2; // Retornando dificuldade difícil
-
-      // Feedback na serial do estado do botão
-      Serial.print("Botão vermelho = ");
-      Serial.print(digitalRead(btnD));
+    } else if (digitalRead(redBtn) == LOW) {
+      difficulty = 2;
       break;
     }
   }
 
-  lcd.clear(); // Limpa a tela para rodas as perguntas
+  for (int question = 0; question < 5; question++) {
+    lcd.clear(); // Clear any previous content displayed on the LCD
+    lcd.setCursor(0, 0);
 
-  for (int pergunta = 0; pergunta < 5; pergunta++) {
-    // A depender da dificuldade a pergunta será passada direita para a esquerda na tela LCD
-    if (dificuldade == 0) {
-      lcd.setCursor(0, 0); // Define caractere inicial e linha do que vai ser escrito na tela
-      lcd.print(perguntasF[pergunta]); // Pergunta a ser escrita
-      delay(500);
-
-      for (int posicao = 0; posicao < 40; posicao++) {
-        lcd.scrollDisplayLeft(); 
-        delay(300);
-      }
-    } else if (dificuldade == 1) {
-      lcd.setCursor(0, 0); // Define caractere inicial e linha do que vai ser escrito na tela
-      lcd.print(perguntasM[pergunta]); // Pergunta a ser escrita
-      delay(500);
-
-      for (int posicao = 0; posicao < 40; posicao++) {
-        lcd.scrollDisplayLeft();
-        delay(300);
-      }
-    } else if (dificuldade == 2) {
-      lcd.setCursor(0, 0); // Define caractere inicial e linha do que vai ser escrito na tela
-      lcd.print(perguntasD[pergunta]); // Pergunta a ser escrita
-      delay(500);
-
-      for (int posicao = 0; posicao < 40; posicao++) {
-        lcd.scrollDisplayLeft();
-        delay(300);
-      }
+    if (difficulty == 0) {
+      lcd.print(easyQuestions[question]);
+    } else if (difficulty == 1) {
+      lcd.print(normalQuestions[question]);
+    } else if (difficulty == 2) {
+      lcd.print(hardQuestions[question]);
     }
 
     contBreak = 0;
 
-    // Feedback na serial da intensidade da luz sendo lida
-    Serial.println("");
-    Serial.print("Luz RAM: ");
-    Serial.print(analogRead(A0));
-    Serial.println("");
-    Serial.print("Luz CPU: ");
-    Serial.print(analogRead(A1));
-    Serial.println("");
-    Serial.print("Luz SSD: ");
-    Serial.print(analogRead(A2));
-    Serial.println("");
-    Serial.print("Luz GPU: ");
-    Serial.print(analogRead(A3));
-    Serial.println("");
-    Serial.print("Luz Fonte: ");
-    Serial.print(analogRead(A4));
-
     while (true) {
-      for (int i = cont; i < 5; i++) {
-        if (i == pergunta) {
-          if (analogRead(luz[pergunta]) < intensidadeLuzEncaixe) {
-            digitalWrite(ledVerde, HIGH);
-            delay(2000);
-            digitalWrite(ledVerde, LOW);
+      for (int socket = cont; socket < 5; socket++) {
+        if (socket == question) {
+          if (digitalRead(reedSwitches[question]) == LOW) {
+            digitalWrite(greenLed, HIGH);
+            playRightTone(buzzerPin);
+            digitalWrite(greenLed, LOW);
+            
+
             contBreak += 1;
             cont += 1;
             break;
           }
-        } else if (analogRead(luz[i]) < intensidadeLuzEncaixe) {
-          digitalWrite(ledVermelho, HIGH);
-          delay(1000);
-          digitalWrite(ledVermelho, LOW);
+        } else if (digitalRead(reedSwitches[socket]) == LOW) {
+          digitalWrite(redLed, HIGH);
+          playErrorTone(buzzerPin);
+          digitalWrite(redLed, LOW);
         }
       }
 
@@ -142,4 +106,28 @@ void loop() {
       }
     }
   }
+}
+
+// Function to play a correct answer tone sequence
+void playRightTone(int buzzerPin) {
+  tone(buzzerPin, 784);   // Play a 784 Hz tone (G5)
+  delay(150);             // Wait for 150 milliseconds
+
+  tone(buzzerPin, 1047);  // Play a 1047 Hz tone (C6)
+  delay(150);             // Wait for 150 milliseconds
+
+  tone(buzzerPin, 1318);  // Play a 1318 Hz tone (E6)
+  delay(150);             // Wait for 150 milliseconds
+
+  tone(buzzerPin, 1568);  // Play a 1568 Hz tone (G6)
+  delay(150);             // Wait for 150 milliseconds
+
+  noTone(buzzerPin);      // Stop the tone
+}
+
+// Function to play an error tone
+void playErrorTone(int buzzerPin) {
+  tone(buzzerPin, 100, 500);  // Generate a 100 Hz tone for 500 milliseconds
+  delay(500);                 // Wait for 500 milliseconds
+  noTone(buzzerPin);          // Stop the tone
 }
