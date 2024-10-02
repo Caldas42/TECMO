@@ -1,50 +1,80 @@
 #include <Wire.h>                  // Include the Wire library for I2C communication
-#include <LiquidCrystal_I2C.h>     // Include the LiquidCrystal_I2C library for the LCD display
+#include <LiquidCrystal_I2C.h>      // Include the library for the I2C LCD display
 
-LiquidCrystal_I2C lcd(0x27, 20, 4); // Initialize the LCD object with the I2C address (0x27), 20 columns, and 4 rows
+LiquidCrystal_I2C lcd(0x27, 20, 4); // Set LCD I2C address and screen size (20 columns, 4 rows)
 
+// Button pins for difficulty selection
 const int greenBtnPin = 2;
 const int yellowBtnPin = 3;
 const int redBtnPin = 4;
 
-int difficulty;
+int difficulty;                    // Variable to store selected difficulty level
 
-char* easyQuestions[5] = {"Qual peca armazena dados temporariamente", "Qual e o cerebro do computador", "Qual peca armazena dados permanentemente", "Qual peca processa graficos e imagens", "Qual peca fornece energia ao computador."};
-char* normalQuestions[5] = {"Qual peca tem frequencias e latencias", "Qual executa varias tarefas simultaneas", "Qual peca usa memoria flash", "Qual peca acelera a criacao de imagens", "Qual peca converte energia eletrica"};
-char* hardQuestions[5] = {"Qual peca pode ser DDR3, DDR4 ou DDR5", "Qual peca usa arquiteturas x86 ou ARM", "Qual peca usa SATA, NVMe ou PCIe", "Qual peca suporta Ray Tracing e DLSS", "Qual tem certificacoes de eficiencia"};
+// Constants representing the number of blocks, levels, and questions
+const int blocks = 5;
+const int levels = 3;
+const int questions = 5;
 
-int reedSwitches[3] = {5, 6, 7, 8, 9};
+// Array storing the question strings for each block and difficulty level
+char* perguntas[blocks][levels][questions] =
 
+                                  {{{"ePowerSupply1", "ePowerSupply2", "ePowerSupply3", "ePowerSupply4", "ePowerSupply5"},    // Easy Power supply questions
+                                    {"nPowerSupply1", "nPowerSupply2", "nPowerSupply3", "nPowerSupply4", "nPowerSupply5"},    // Normal Power supply questions
+                                    {"hPowerSupply1", "hPowerSupply2", "hPowerSupply3", "hPowerSupply4", "hPowerSupply5"}},   // Hard Power supply questions
+
+                                   {{"eCpu1", "eCpu2", "eCpu3", "eCpu4", "eCpu5"},    // Easy CPU questions
+                                    {"nCpu1", "nCpu2", "nCpu3", "nCpu4", "nCpu5"},    // Normal CPU questions
+                                    {"hCpu1", "hCpu2", "hCpu3", "hCpu4", "hCpu5"}},   // Hard CPU questions
+                                    
+                                    {{"eRam1", "eRam2", "eRam3", "eRam4", "eRam5"},   // Easy RAM questions
+                                     {"nRam1", "nRam2", "nRam3", "nRam4", "nRam5"},   // Normal RAM questions
+                                     {"hRam1", "hRam2", "hRam3", "hRam4", "hRam5"}},  // Hard RAM questions
+                                     
+                                    {{"eSsd1", "eSsd2", "eSsd3", "eSsd4", "eSsd5"},   // Easy SSD questions
+                                     {"nSsd1", "nSsd2", "nSsd3", "nSsd4", "nSsd5"},   // Normal SSD questions
+                                     {"hSsd1", "hSsd2", "hSsd3", "hSsd4", "hSsd5"}},  // Hard SSD questions
+                                     
+                                    {{"eGpu1", "eGpu2", "eGpu3", "eGpu4", "eGpu5"}, // Easy GPU questions
+                                     {"nGpu1", "nGpu2", "nGpu3", "nGpu4", "nGpu5"}, // Normal GPU questions
+                                     {"hGpu1", "hGpu2", "hGpu3", "hGpu4", "hGpu5"}}}; // Hard GPU questions
+
+// Array for reed switch pins
+int reedSwitches[5] = {5, 6, 7, 8, 9};
+
+// LED pin constants
 const int redLedPin = 10;
 const int greenLedPin = 11;
 
+// Buzzer pin
 int buzzerPin = 12;
 
-int cont;
-int contBreak;
-
 void setup() {
+  lcd.init();                 // Initialize the LCD
+  lcd.backlight();            // Turn on the LCD backlight
+
+  // Set button pins as input with pull-up resistors
   pinMode(greenBtnPin, INPUT_PULLUP);
   pinMode(yellowBtnPin, INPUT_PULLUP);
   pinMode(redBtnPin, INPUT_PULLUP);
 
-  pinMode(redLedPin, OUTPUT);
-  pinMode(greenLedPin, OUTPUT);
-
-  pinMode(buzzerPin, OUTPUT);
-
-  for (int i = 0; i < 3; i++) {
+  // Initialize reed switches as inputs with pull-up resistors
+  for (int i = 0; i < 5; i++) {
     pinMode(reedSwitches[i], INPUT_PULLUP);
   }
 
-  lcd.init();            // Initialize the LCD
-  lcd.backlight();       // Turn on the backlight
+  // Set LED pins as outputs
+  pinMode(redLedPin, OUTPUT);
+  pinMode(greenLedPin, OUTPUT);
+
+  // Set buzzer pin as output
+  pinMode(buzzerPin, OUTPUT);
 }
 
 void loop() {
-  lcd.clear();           // Clear any previous content displayed on the LCD
-  cont = 0;
+  lcd.clear();                // Clear the LCD
+  int cont = 0;               // Variable to track the current block
 
+  // Display instructions for difficulty selection
   lcd.setCursor(5, 0);
   lcd.print("Selecione");
 
@@ -54,94 +84,119 @@ void loop() {
   lcd.setCursor(4, 2);
   lcd.print("dificuldade");
 
-  //difficulty = setDifficulty(greenBtnPin, yellowBtnPin, redBtnPin);
+  // Call function to set difficulty based on button input
+  difficulty = setDifficulty(greenBtnPin, yellowBtnPin, redBtnPin);
 
-  while (true) {
-    if (digitalRead(greenBtnPin) == LOW) {
-      difficulty = 0;
-      break;
-    } else if (digitalRead(yellowBtnPin) == LOW) {
-      difficulty = 1;
-      break;
-    } else if (digitalRead(redBtnPin) == LOW) {
-      difficulty = 2;
-      break;
-    }
-  }
+  // Arrays to store the random order of blocks and questions
+  int questionsArray[questions];
+  int blocksOrder[blocks];
 
-  for (int question = 0; question < 5; question++) {
-    lcd.clear(); // Clear any previous content displayed on the LCD
+  randomSeed(analogRead(0));   // Generate a random seed based on analog pin 0
+
+  randomBlocksOrder(blocksOrder, blocks); // Generate a random order for blocks
+  randomQuestions(questionsArray, questions); // Generate a random order for questions
+
+  // Loop through each block (5 blocks)
+  for (int j = 0; j < 5; j++) {
+    lcd.clear();
     lcd.setCursor(0, 0);
 
-    if (difficulty == 0) {
-      lcd.print(easyQuestions[question]);
-    } else if (difficulty == 1) {
-      lcd.print(normalQuestions[question]);
-    } else if (difficulty == 2) {
-      lcd.print(hardQuestions[question]);
-    }
+    // Display the question for the selected difficulty and block
+    lcd.print(perguntas[blocksOrder[j]][difficulty][questionsArray[j]]);
 
-    contBreak = 0;
+    int contBreak = 0;          // Variable to exit the inner loop
 
+    // Wait for the correct reed switch input
     while (true) {
-      for (int socket = cont; socket < 5; socket++) {
-        if (socket == question) {
-          if (digitalRead(reedSwitches[question]) == LOW) {
-            digitalWrite(greenLedPin, HIGH);
-            playRightTone(buzzerPin);
-            digitalWrite(greenLedPin, LOW);
+      for (int k = cont; k < 5; k++) {
+        if (k == blocksOrder[j]) {
+          if (digitalRead(reedSwitches[blocksOrder[j]]) == LOW) {
+            digitalWrite(greenLedPin, HIGH);   // Turn on green LED for correct input
+            playRightTone(buzzerPin);          // Play correct tone
+            digitalWrite(greenLedPin, LOW);    // Turn off green LED
             
-
             contBreak += 1;
             cont += 1;
             break;
           }
-        } else if (digitalRead(reedSwitches[socket]) == LOW) {
-          digitalWrite(redLedPin, HIGH);
-          playErrorTone(buzzerPin);
-          digitalWrite(redLedPin, LOW);
+        } else if (digitalRead(reedSwitches[k]) == LOW) {
+          digitalWrite(redLedPin, HIGH);       // Turn on red LED for wrong input
+          playErrorTone(buzzerPin);            // Play error tone
+          digitalWrite(redLedPin, LOW);        // Turn off red LED
         }
       }
 
       if (contBreak != 0) {
-        break;
+        break;  // Exit inner loop when correct switch is pressed
       }
     }
   }
 }
 
+// Function to set difficulty level based on button input
 int setDifficulty(int btn1, int btn2, int btn3) {
   while (true) {
     if (digitalRead(btn1) == LOW) {
-      return 0;
+      return 0;  // Easy difficulty
     } else if (digitalRead(btn2) == LOW) {
-      return 1;
+      return 1;  // Normal difficulty
     } else if (digitalRead(btn3) == LOW) {
-      return 2;
+      return 2;  // Hard difficulty
     }
   }
 }
 
-// Function to play a correct answer tone sequence
-void playRightTone(int buzzerPin) {
-  tone(buzzerPin, 784);   // Play a 784 Hz tone (G5)
-  delay(150);             // Wait for 150 milliseconds
+// Function to generate random order for blocks
+void randomBlocksOrder(int array[], int length) {
+  int cont = 0;
 
-  tone(buzzerPin, 1047);  // Play a 1047 Hz tone (C6)
-  delay(150);             // Wait for 150 milliseconds
+  while (cont < length) {
+    bool alreadyIn = false;
+    int randomNum = rand() % length;
 
-  tone(buzzerPin, 1318);  // Play a 1318 Hz tone (E6)
-  delay(150);             // Wait for 150 milliseconds
+    // Check if the number is already in the array
+    for (int i = 0; i < cont; i++) {
+      if (array[i] == randomNum) {
+        alreadyIn = true;
+        break;
+      }
+    }
 
-  tone(buzzerPin, 1568);  // Play a 1568 Hz tone (G6)
-  delay(150);             // Wait for 150 milliseconds
-
-  noTone(buzzerPin);      // Stop the tone
+    // If the number is not already in the array, add it
+    if (!alreadyIn) {
+      array[cont] = randomNum;
+      cont++;
+    }
+  }
 }
 
-// Function to play an error tone
+// Function to generate random questions order
+void randomQuestions(int array[], int length) {
+  for (int i = 0; i < length; i++) {
+    array[i] = rand() % length;
+  }
+}
+
+// Function to play the correct tone sequence
+void playRightTone(int buzzerPin) {
+  tone(buzzerPin, 784);
+  delay(150);
+
+  tone(buzzerPin, 1047);
+  delay(150);
+
+  tone(buzzerPin, 1318);
+  delay(150);
+
+  tone(buzzerPin, 1568);
+  delay(150);
+
+  noTone(buzzerPin);
+}
+
+// Function to play the error tone
 void playErrorTone(int buzzerPin) {
-  tone(buzzerPin, 100, 500);  // Generate a 100 Hz tone for 500 milliseconds
-  delay(500);                 // Wait for 500 milliseconds
-  noTone(buzzerPin);          // Stop the tone
+  tone(buzzerPin, 100, 500);
+  delay(500);
+  noTone(buzzerPin);
 }
