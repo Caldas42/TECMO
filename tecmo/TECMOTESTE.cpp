@@ -36,7 +36,7 @@ void randomBlocksOrder(int array[], int length);
 void randomQuestions(int array[], int length);
 int setDifficulty(int btn1, int btn2, int btn3);
 
-void loop() {
+int main() {
 
   int cont = 0;               // Variable to track the current block
 
@@ -49,8 +49,8 @@ void loop() {
 
   // Arrays to store the random order of blocks and questions
 
-  int questionsArray[questions];
-  int blocksOrder[blocks];
+  int questionsArray[questions]; //5
+  int blocksOrder[blocks]; //5
 
   srand(time(NULL)); 
 
@@ -88,6 +88,7 @@ void loop() {
       }
     }
   }
+  return 0;
 }
 
 // Function to set difficulty level based on button input
