@@ -38,6 +38,8 @@ int setDifficulty(int btn1, int btn2, int btn3);
 
 int main() {
 
+  int lives = 3;
+
   int cont = 0;               // Variable to track the current block
 
   // Display instructions for difficulty selection
@@ -67,10 +69,15 @@ int main() {
 
     // Wait for the correct reed switch input
     while (true) { // ?
+    
       for (int k = cont; k < 5; k++) {
+
+        std::cout << lives << std::endl;
+
         int resposta;
         std::cout << "Resposta certa?" << std::endl;
         std::cin >> resposta;
+
         if (resposta == 1){
             std::cout << "Certo!" << std::endl;
 
@@ -78,15 +85,45 @@ int main() {
             contBreak++;
 
             break;
+
         } else {
-            std::cout << "Errado! Tende de novo" << std::endl;
+
+            std::cout << "Errado! Tente de novo" << std::endl;
+            lives--;
+
+            if (lives <= 0){
+              break;
+            }
+
         }
+
+        if (lives <= 0){
+              break;
+        }
+
       }
+
+      if (lives <= 0){
+              break;
+      }
+
 
       if (contBreak != 0) {
         break;  // Exit inner loop when correct switch is pressed
       }
+
     }
+
+    if (lives <= 0) {
+        break;  // Exit inner loop when correct switch is pressed
+      }
+
+  }
+
+  if (lives <= 0){
+    std::cout << "perdeu" << std::endl;
+  } else {
+    std::cout << "venceu" << std::endl;
   }
   return 0;
 }
