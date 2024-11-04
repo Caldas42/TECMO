@@ -13,30 +13,30 @@ int difficulty;                    // Variable to store selected difficulty leve
 // Constants representing the number of blocks, levels, and questions
 const int blocks = 5;
 const int levels = 3;
-const int questions = 5;
+const int questions = 1;
 
 // Array storing the question strings for each block and difficulty level
 char* perguntas[blocks][levels][questions] =
 
-                                  {{{"ePowerSupply1", "ePowerSupply2", "ePowerSupply3", "ePowerSupply4", "ePowerSupply5"},    // Easy Power supply questions
-                                    {"nPowerSupply1", "nPowerSupply2", "nPowerSupply3", "nPowerSupply4", "nPowerSupply5"},    // Normal Power supply questions
-                                    {"hPowerSupply1", "hPowerSupply2", "hPowerSupply3", "hPowerSupply4", "hPowerSupply5"}},   // Hard Power supply questions
+                                  {{{"Qual peca transforma a energia da tomada para o computador?"},    // Easy Power supply questions
+                                    {"Qual peca converte a corrente alternada (AC) em corrente continua (DC)?"},    // Normal Power supply questions
+                                    {"Qual peca possui conectores 24 pinos e 8 pinos?"}},   // Hard Power supply questions
 
-                                   {{"eCpu1", "eCpu2", "eCpu3", "eCpu4", "eCpu5"},    // Easy CPU questions
-                                    {"nCpu1", "nCpu2", "nCpu3", "nCpu4", "nCpu5"},    // Normal CPU questions
-                                    {"hCpu1", "hCpu2", "hCpu3", "hCpu4", "hCpu5"}},   // Hard CPU questions
+                                   {{"Qual peca e o cerebro do computador?"},    // Easy CPU questions
+                                    {"Qual peca e a unidade central de processamento?"},    // Normal CPU questions
+                                    {"Qual peca usa arquitetura como x86 ou ARM?"}},   // Hard CPU questions
                                     
-                                    {{"eRam1", "eRam2", "eRam3", "eRam4", "eRam5"},   // Easy RAM questions
-                                     {"nRam1", "nRam2", "nRam3", "nRam4", "nRam5"},   // Normal RAM questions
-                                     {"hRam1", "hRam2", "hRam3", "hRam4", "hRam5"}},  // Hard RAM questions
+                                    {{"Qual peca armazena  temporariamente os dados em uso pelo computador?"},   // Easy RAM questions
+                                     {"Qual peca e volatil e perde dados ao desligar o PC?"},   // Normal RAM questions
+                                     {"Qual peca pode utilizar a tecnologia DDR (Double Data Rate) para aumentar a largura de banda?"}},  // Hard RAM questions
                                      
-                                    {{"eSsd1", "eSsd2", "eSsd3", "eSsd4", "eSsd5"},   // Easy SSD questions
-                                     {"nSsd1", "nSsd2", "nSsd3", "nSsd4", "nSsd5"},   // Normal SSD questions
-                                     {"hSsd1", "hSsd2", "hSsd3", "hSsd4", "hSsd5"}},  // Hard SSD questions
+                                    {{"Qual a peca que oferece maior velocidade de leitura e escrita em comparacao com os HDs?"},   // Easy SSD questions
+                                     {"Qual peca pode ter formato M.2, U.2, ou 2.5?"},   // Normal SSD questions
+                                     {"Qual peca usa NAND types como SLC, MLC, TLC, QLC?"}},  // Hard SSD questions
                                      
-                                    {{"eGpu1", "eGpu2", "eGpu3", "eGpu4", "eGpu5"}, // Easy GPU questions
-                                     {"nGpu1", "nGpu2", "nGpu3", "nGpu4", "nGpu5"}, // Normal GPU questions
-                                     {"hGpu1", "hGpu2", "hGpu3", "hGpu4", "hGpu5"}}}; // Hard GPU questions
+                                    {{"Qual peca e responsavel pelo processamento grafico?"}, // Easy GPU questions
+                                     {"Qual componente e projetado para suportar a execucao de APIs de graficos?"}, // Normal GPU questions
+                                     {"Qual unidade suporta APIs graficas como DirectX e OpenGL?"}}}; // Hard GPU questions
 
 // Array for reed switch pins
 int reedSwitches[5] = {8, 12, 11, 10, 9}; // 8 - PS, 9 - gpu, 10 - ssd, 11 - ram, 12 - cpu
@@ -87,6 +87,7 @@ void loop() {
 
   // Call function to set difficulty based on button input
   difficulty = setDifficulty(greenBtnPin, yellowBtnPin, redBtnPin);
+
   
   // Arrays to store the random order of blocks and questions
   int questionsArray[questions];
@@ -96,6 +97,7 @@ void loop() {
 
   randomBlocksOrder(blocksOrder, blocks); // Generate a random order for blocks
   randomQuestions(questionsArray, questions); // Generate a random order for questions
+  int blocksFitted[blocks] = {-1, -1, -1, -1, -1};
 
   // Loop through each block (5 blocks)
   for (int j = 0; j < blocks; j++) {
@@ -109,18 +111,26 @@ void loop() {
 
     // Wait for the correct reed switch input
     while (true) {
-      for (int k = cont; k < 5; k++) {
-        if (k == blocksOrder[j]) {
-          if (digitalRead(reedSwitches[blocksOrder[j]]) == LOW) {
-            digitalWrite(greenLedPin, HIGH);   // Turn on green LED for correct input
-            playRightTone(buzzerPin);          // Play correct tone
-            digitalWrite(greenLedPin, LOW);    // Turn off green LED
-            
-            contBreak += 1;
-            cont += 1;
+      for (int k = 0; k < blocks; k++) {
+        bool blockFitted = false;
+
+        for (int l = 0; l < blocks; l++) {
+          if (blocksFitted[l] == k) {
+            blockFitted = true;
             break;
           }
-        } else if (digitalRead(reedSwitches[k]) == LOW) {
+        }
+
+        if (k == blocksOrder[j] && digitalRead(reedSwitches[blocksOrder[j]]) == LOW) {
+          digitalWrite(greenLedPin, HIGH);   // Turn on green LED for correct input
+          playRightTone(buzzerPin);          // Play correct tone
+          digitalWrite(greenLedPin, LOW);    // Turn off green LED
+
+          blocksFitted[j] = k;
+          contBreak += 1;
+
+          break;
+        } else if (blockFitted == false && digitalRead(reedSwitches[k]) == LOW) {
           digitalWrite(redLedPin, HIGH);       // Turn on red LED for wrong input
           playErrorTone(buzzerPin);            // Play error tone
           digitalWrite(redLedPin, LOW);        // Turn off red LED
@@ -132,6 +142,11 @@ void loop() {
       }
     }
   }
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Obrigado por jogar!");
+  delay(2000);
 }
 
 // Function to set difficulty level based on button input
